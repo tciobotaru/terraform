@@ -90,7 +90,12 @@ resource "null_resource" "stop_temp_vm" {
   depends_on = [google_compute_instance.temp_vm]
 
   provisioner "local-exec" {
-    command = "gcloud compute instances stop ${google_compute_instance.temp_vm.name} --zone ${var.zone} --project ${var.project_id}"
+    
+    command = <<EOT
+    echo "Sleeping 60s to allow startup script to finish..."
+    sleep 60
+    gcloud compute instances stop ${google_compute_instance.temp_vm.name} --zone ${var.zone} --project ${var.project_id}
+  EOT
   }
 }
 
@@ -121,6 +126,11 @@ resource "google_compute_instance_template" "webserver_template" {
     subnetwork = local.subnet_self_link
     access_config {}
   }
+  metadata_startup_script = <<-EOT
+  #!/bin/bash
+  echo "<h1>Welcome from $(hostname)</h1>" > /var/www/html/index.html
+  systemctl restart apache2
+  EOT
 
   tags = ["web-server"]
 }
